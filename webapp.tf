@@ -1,32 +1,20 @@
-
 terraform {
   # Assumes s3 bucket and dynamo DB table already set up
   # See /code/03-basics/aws-backend
   backend "s3" {
-    bucket         = "foil-bucket-tf-state"
+    bucket         = "devops-directive-tf-state"
     key            = "fence/terraform.tfstate"
     region         = "us-east-1"
     dynamodb_table = "terraform-state-locking"
     encrypt        = true
   }
 
-  terraform {
-  
-     backend "s3" {
-     bucket         = "foil-bucket-tf-state" 
-     key            = "fence/terraform.tfstate"
-     region         = "us-east-1"
-     dynamodb_table = "terraform-state-locking"
-     encrypt        = true
-   }
-
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.20.0"
+      version = "~> 5.20.0 "
     }
   }
-
 }
 
 provider "aws" {
@@ -34,7 +22,7 @@ provider "aws" {
 }
 
 resource "aws_instance" "instance_1" {
-  ami             = "ami-053b0d53c279acc90" # Ubuntu 20.04 LTS // us-east-1
+  ami             = "ami-011899242bb902164" # Ubuntu 20.04 LTS // us-east-1
   instance_type   = "t2.micro"
   security_groups = [aws_security_group.instances.name]
   user_data       = <<-EOF
@@ -45,7 +33,7 @@ resource "aws_instance" "instance_1" {
 }
 
 resource "aws_instance" "instance_2" {
-  ami             = "ami-053b0d53c279acc90" # Ubuntu 20.04 LTS // us-east-1
+  ami             = "ami-011899242bb902164" # Ubuntu 20.04 LTS // us-east-1
   instance_type   = "t2.micro"
   security_groups = [aws_security_group.instances.name]
   user_data       = <<-EOF
@@ -55,34 +43,20 @@ resource "aws_instance" "instance_2" {
               EOF
 }
 
- 
-}
-
-provider "aws" {
-   region  = "us-east-1"
-}
-
-resource "aws_instance" "example" {
-  ami           = "ami-053b0d53c279acc90"
-  instance_type = "t2.micro"
-}
-
-
-
-resource "aws_s3_bucket" "terraform_state" {
-  bucket        = "foil-bucket-tf-state" 
+resource "aws_s3_bucket" "bucket" {
+  bucket_prefix = "frncing-foil-web-app-data"
   force_destroy = true
 }
 
-resource "aws_s3_bucket_versioning" "terraform_bucket_versioning" {
-  bucket = aws_s3_bucket.terraform_state.id
+resource "aws_s3_bucket_versioning" "bucket_versioning" {
+  bucket = aws_s3_bucket.bucket.id
   versioning_configuration {
     status = "Enabled"
   }
 }
 
-resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state_crypto_conf" {
-  bucket        = aws_s3_bucket.terraform_state.bucket 
+resource "aws_s3_bucket_server_side_encryption_configuration" "bucket_crypto_conf" {
+  bucket = aws_s3_bucket.bucket.bucket
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
@@ -95,12 +69,7 @@ data "aws_vpc" "default_vpc" {
 }
 
 data "aws_subnet_ids" "default_subnet" {
-  vpc_id = "vpc-0fd524ac4a80369d6"
-}
-
-# Output subnet IDs
-output "subnet_ids" {
-  value = data.aws_subnet_ids.default_subnet.ids
+  vpc_id = data.aws_vpc.default_vpc.id
 }
 
 resource "aws_security_group" "instances" {
@@ -235,26 +204,17 @@ resource "aws_route53_record" "root" {
 
 resource "aws_db_instance" "db_instance" {
   allocated_storage = 20
-  
+  # This allows any minor version within the major engine_version
+  # defined below, but will also result in allowing AWS to auto
+  # upgrade the minor version of your DB. This may be too risky
+  # in a real production environment.
   auto_minor_version_upgrade = true
   storage_type               = "standard"
   engine                     = "postgres"
   engine_version             = "12"
   instance_class             = "db.t2.micro"
-  identifier                    = "mydb"
+  name                       = "mydb"
   username                   = "foo"
   password                   = "foobarbaz"
   skip_final_snapshot        = true
 }
-
-resource "aws_dynamodb_table" "terraform_locks" {
-  name         = "terraform-state-locking"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "LockID"
-  attribute {
-    name = "LockID"
-    type = "S"
-  
-  }
-}
-
