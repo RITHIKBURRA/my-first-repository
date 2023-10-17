@@ -1,18 +1,12 @@
 terraform {
   # Assumes s3 bucket and dynamo DB table already set up
-  # See /code/03-basics/aws-backend
-  backend "s3" {
-    bucket         = "devops-directive-tf-state"
-    key            = "fence/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "terraform-state-locking"
-    encrypt        = true
-  }
+  # See main tf file
+  
 
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.20.0 "
+      version = "~> 5.20.0"
     }
   }
 }
@@ -44,7 +38,7 @@ resource "aws_instance" "instance_2" {
 }
 
 resource "aws_s3_bucket" "bucket" {
-  bucket_prefix = "frncing-foil-web-app-data"
+  bucket_prefix = "foil-bucket-web-app-data"
   force_destroy = true
 }
 
@@ -187,12 +181,12 @@ resource "aws_lb" "load_balancer" {
 }
 
 resource "aws_route53_zone" "primary" {
-  name = "devopsdeployed.com"
+  name = "yourcode.com"
 }
 
 resource "aws_route53_record" "root" {
   zone_id = aws_route53_zone.primary.zone_id
-  name    = "devopsdeployed.com"
+  name    = "yourcode.com"
   type    = "A"
 
   alias {
@@ -213,7 +207,7 @@ resource "aws_db_instance" "db_instance" {
   engine                     = "postgres"
   engine_version             = "12"
   instance_class             = "db.t2.micro"
-  name                       = "mydb"
+  identifier                   = "mydb"
   username                   = "foo"
   password                   = "foobarbaz"
   skip_final_snapshot        = true
